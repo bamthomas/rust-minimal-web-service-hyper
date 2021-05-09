@@ -2,7 +2,7 @@ use bytes::Bytes;
 use hyper::{
     body::to_bytes,
     service::{make_service_fn, service_fn},
-    Body, Request, Server,
+    Body, Request, Server
 };
 use route_recognizer::Params;
 use router::Router;
