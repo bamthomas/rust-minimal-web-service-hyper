@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 mod handler;
 mod router;
+mod repository;
 
 type Response = hyper::Response<hyper::Body>;
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
