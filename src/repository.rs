@@ -73,10 +73,10 @@ impl Repository for PgsqlRepository {
 mod tests {
     use crate::repository::{PgsqlRepository, Repository, Contact};
     use test_context::{test_context, AsyncTestContext};
-    use tokio_postgres::{Client, NoTls};
+    use tokio_postgres::{NoTls};
     use async_trait::async_trait;
 
-    struct PgContext { db: Client }
+    struct PgContext { repository: PgsqlRepository }
 
     #[async_trait]
     impl AsyncTestContext for PgContext {
@@ -88,25 +88,23 @@ mod tests {
                     eprintln!("connection error: {}", e);
                 }
             });
-            PgContext {  db: client }
+            PgContext {  repository: PgsqlRepository{ client } }
         }
 
         async fn teardown(self) {
-            self.db.execute("DELETE FROM contact", &[]).await.unwrap();
+            self.repository.client.execute("DELETE FROM contact", &[]).await.unwrap();
         }
     }
 
     #[test_context(PgContext)]
     #[tokio::test]
-    async fn get_contact_no_contact() {
-        let repository = PgsqlRepository::new("host=postgresql user=test password=test dbname=test").await;
-        assert!(repository.get(12).await.is_err(), "no results should be found")
+    async fn get_contact_no_contact(ctx: &PgContext) {
+        assert!(ctx.repository.get(12).await.is_err(), "no results should be found")
     }
 
     #[test_context(PgContext)]
     #[tokio::test]
-    async fn save_get_contact() {
-        let repository = PgsqlRepository::new("host=postgresql user=test password=test dbname=test").await;
+    async fn save_get_contact(ctx: &PgContext) {
         let contact = Contact {
             id: 13,
             firstname: "first".to_string(),
@@ -114,8 +112,8 @@ mod tests {
             phone: "0123456789".to_string(),
             email: "e@mail.com".to_string()
         };
-        assert!(repository.save(&contact).await.is_ok(), "save should succeed");
-        assert!(repository.get(13).await.is_ok(), "contact should be found")
+        assert!(ctx.repository.save(&contact).await.is_ok(), "save should succeed");
+        assert!(ctx.repository.get(13).await.is_ok(), "contact should be found")
     }
 
 
