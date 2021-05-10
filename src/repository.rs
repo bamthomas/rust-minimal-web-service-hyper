@@ -13,6 +13,7 @@ pub struct Contact {
 pub trait Repository {
     async fn new(dsl: &str) -> Self;
     async fn get(&self, id: i32) -> Result<Contact, Error>;
+    async fn save(&self, contact: &Contact) -> Result<u64, Error>;
 }
 
 pub struct PgsqlRepository {
@@ -56,30 +57,66 @@ impl Repository for PgsqlRepository {
         if rows.len() == 0 {
             Err(Error::Intern(format!("no record with id {}", id)))
         } else {
-            let id = rows[0].get(0);
-            let firstname = rows[0].get(1);
-            let lastname = rows[0].get(2);
-            let phone = rows[0].get(3);
-            let email = rows[0].get(4);
-
-            Ok(Contact {
-                id,
-                firstname,
-                lastname,
-                phone,
-                email
+            Ok(Contact { id: rows[0].get(0), firstname: rows[0].get(1),
+                lastname: rows[0].get(2), phone: rows[0].get(3), email: rows[0].get(4)
             })
         }
+    }
+
+    async fn save(&self, contact: &Contact) -> Result<u64, Error> {
+        Ok(self.client.execute("INSERT INTO contact (id, firstname, lastname, phone, email) VALUES ($1, $2, $3, $4, $5)",
+                            &[&contact.id, &contact.firstname, &contact.lastname, &contact.phone, &contact.email]).await?)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::repository::{PgsqlRepository, Repository};
+    use crate::repository::{PgsqlRepository, Repository, Contact};
+    use test_context::{test_context, AsyncTestContext};
+    use tokio_postgres::{Client, NoTls};
+    use async_trait::async_trait;
 
+    struct PgContext { db: Client }
+
+    #[async_trait]
+    impl AsyncTestContext for PgContext {
+        async fn setup() -> PgContext {
+            let (client, connection) = tokio_postgres::connect("host=postgresql user=test password=test dbname=test", NoTls).await.unwrap();
+
+            tokio::spawn(async move {
+                if let Err(e) = connection.await {
+                    eprintln!("connection error: {}", e);
+                }
+            });
+            PgContext {  db: client }
+        }
+
+        async fn teardown(self) {
+            self.db.execute("DELETE FROM contact", &[]).await.unwrap();
+        }
+    }
+
+    #[test_context(PgContext)]
     #[tokio::test]
     async fn get_contact_no_contact() {
         let repository = PgsqlRepository::new("host=postgresql user=test password=test dbname=test").await;
         assert!(repository.get(12).await.is_err(), "no results should be found")
     }
+
+    #[test_context(PgContext)]
+    #[tokio::test]
+    async fn save_get_contact() {
+        let repository = PgsqlRepository::new("host=postgresql user=test password=test dbname=test").await;
+        let contact = Contact {
+            id: 13,
+            firstname: "first".to_string(),
+            lastname: "second".to_string(),
+            phone: "0123456789".to_string(),
+            email: "e@mail.com".to_string()
+        };
+        assert!(repository.save(&contact).await.is_ok(), "save should succeed");
+        assert!(repository.get(13).await.is_ok(), "contact should be found")
+    }
+
+
 }

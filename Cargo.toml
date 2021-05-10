@@ -17,6 +17,7 @@ async-trait = "0.1"
 
 [dev-dependencies]
 tokio-test = "*"
+test-context = "*"
 
 [profile.dev]
 debug = 0
