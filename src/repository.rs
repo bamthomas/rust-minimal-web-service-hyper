@@ -1,6 +1,8 @@
 use tokio_postgres::{Client, NoTls, Error as PgError};
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize)]
 pub struct Contact {
     pub id: i32,
     pub firstname: String,
@@ -115,6 +117,4 @@ mod tests {
         assert!(ctx.repository.save(&contact).await.is_ok(), "save should succeed");
         assert!(ctx.repository.get(13).await.is_ok(), "contact should be found")
     }
-
-
 }
