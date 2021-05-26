@@ -55,21 +55,18 @@ impl Repository for PgsqlRepository {
     }
 
     async fn get(&self, id: i32) -> Result<Contact, Error> {
-        let rows = self.client.query("SELECT id, firstname, lastname, phone, email FROM contact WHERE id=$1", &[&id]).await?;
-        if rows.len() == 0 {
-            Err(Error::Intern(format!("no record with id {}", id)))
-        } else {
-            let row_firstname : Option<String> =  rows[0].get(1);
-            let row_phone : Option<String> =  rows[0].get(3);
-            let row_email : Option<String> =  rows[0].get(4);
-            Ok(Contact {
-                id: rows[0].get(0),
-                firstname: row_firstname.unwrap_or(String::from("")),
-                lastname: rows[0].get(2),
-                phone: row_phone.unwrap_or(String::from("")),
-                email: row_email.unwrap_or(String::from("")),
-            })
-        }
+        let row = self.client.query_one("SELECT id, firstname, lastname, phone, email FROM contact WHERE id=$1", &[&id]).await?;
+        let row_firstname : Option<String> =  row.get(1);
+        let row_phone : Option<String> =  row.get(3);
+        let row_email : Option<String> =  row.get(4);
+        Ok(Contact {
+            id: row.get(0),
+            firstname: row_firstname.unwrap_or(String::from("")),
+            lastname: row.get(2),
+            phone: row_phone.unwrap_or(String::from("")),
+            email: row_email.unwrap_or(String::from("")),
+        })
+        
     }
 
     async fn save(&self, contact: &Contact) -> Result<u64, Error> {
