@@ -126,6 +126,14 @@ mod tests {
     #[tokio::test]
     async fn save_get_contact_with_empty_fields(ctx: &PgContext) {
         ctx.repository.client.execute("INSERT INTO contact (id, lastname) VALUES ($1,$2)", &[&14, &"foo"],).await.unwrap();
-        assert!(ctx.repository.get(14).await.is_ok(),"contact should be found")
+        let contact = match ctx.repository.get(14).await {
+            Ok(contact) => contact,
+            Err(error) => {panic!("error : {:?}", error)},
+        };
+        assert_eq!(contact.id, 14);
+        assert_eq!(contact.firstname, String::from(""));
+        assert_eq!(contact.lastname, "foo");
+        assert_eq!(contact.phone, String::from(""));
+        assert_eq!(contact.email, String::from(""))
     }
 }
