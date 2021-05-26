@@ -59,8 +59,15 @@ impl Repository for PgsqlRepository {
         if rows.len() == 0 {
             Err(Error::Intern(format!("no record with id {}", id)))
         } else {
-            Ok(Contact { id: rows[0].get(0), firstname: rows[0].get(1),
-                lastname: rows[0].get(2), phone: rows[0].get(3), email: rows[0].get(4)
+            let row_firstname : Option<String> =  rows[0].get(1);
+            let row_phone : Option<String> =  rows[0].get(3);
+            let row_email : Option<String> =  rows[0].get(4);
+            Ok(Contact {
+                id: rows[0].get(0),
+                firstname: row_firstname.unwrap_or(String::from("")),
+                lastname: rows[0].get(2),
+                phone: row_phone.unwrap_or(String::from("")),
+                email: row_email.unwrap_or(String::from("")),
             })
         }
     }
@@ -116,5 +123,12 @@ mod tests {
         };
         assert!(ctx.repository.save(&contact).await.is_ok(), "save should succeed");
         assert!(ctx.repository.get(13).await.is_ok(), "contact should be found")
+    }
+
+    #[test_context(PgContext)]
+    #[tokio::test]
+    async fn save_get_contact_with_empty_fields(ctx: &PgContext) {
+        ctx.repository.client.execute("INSERT INTO contact (id, lastname) VALUES ($1,$2)", &[&14, &"foo"],).await.unwrap();
+        assert!(ctx.repository.get(14).await.is_ok(),"contact should be found")
     }
 }
